@@ -14,11 +14,11 @@ export default function Hero() {
   const [displayText, setDisplayText] = useState("");
   const [roleIndex, setRoleIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   useEffect(() => {
     let timeout: NodeJS.Timeout;
-    
     const currentRole = roles[roleIndex];
+
     const updateText = () => {
       if (!isDeleting) {
         if (displayText.length < currentRole.length) {
@@ -42,24 +42,27 @@ export default function Hero() {
     return () => clearTimeout(timeout);
   }, [displayText, roleIndex, isDeleting]);
 
+  const handleDownloadResume = () => {
+    const link = document.createElement("a");
+    link.href = "/files/FullStack_Koushik_Saha.pdf";
+    link.download = "resume.pdf";
+    link.click();
+  };
+
   return (
-    <div className="relative min-h-screen flex items-center justify-center py-24 sm:py-32 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+    <div className="relative min-h-screen flex items-center justify-center py-24 sm:py-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
+
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
         <motion.div
           initial={{ opacity: 0, x: -100 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8 }}
           className="space-y-6"
         >
-          <motion.h1
-            className="text-4xl sm:text-4xl font-bold text-gray-900 dark:text-white"
-          >
+          <motion.h1 className="text-4xl sm:text-4xl font-bold text-gray-900 dark:text-white">
             Hi I'am,
           </motion.h1>
-          <br />
-          <motion.h1
-            className="text-4xl sm:text-4xl font-bold text-gray-900 dark:text-yellow-300"
-          >
+          <motion.h1 className="text-4xl sm:text-4xl font-bold text-gray-900 dark:text-yellow-300">
             {displayText}
             <motion.span
               animate={{ opacity: [0, 1, 0] }}
@@ -67,7 +70,7 @@ export default function Hero() {
               className="inline-block ml-1 w-[2px] h-8 bg-blue-600 dark:bg-blue-400"
             />
           </motion.h1>
-          <motion.p 
+          <motion.p
             className="text-xl text-gray-600 dark:text-gray-300"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -79,6 +82,7 @@ export default function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
+            className="flex gap-4"
           >
             <a
               href="#projects"
@@ -86,6 +90,13 @@ export default function Hero() {
             >
               View My Work
             </a>
+
+            <button
+              onClick={handleDownloadResume}
+              className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              Download Resume
+            </button>
           </motion.div>
         </motion.div>
         <motion.div
@@ -106,3 +117,5 @@ export default function Hero() {
     </div>
   );
 }
+
+

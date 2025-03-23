@@ -42,38 +42,51 @@ export default function Contact() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-white px-4">
       <motion.div 
         initial={{ opacity: 0, y: 50 }} 
         animate={{ opacity: 1, y: 0 }} 
         transition={{ duration: 1 }}
-        className="w-full max-w-lg bg-gray-800/70 backdrop-blur-md rounded-2xl p-8 shadow-lg"
+        className="w-full max-w-lg bg-white dark:bg-gray-800/70 backdrop-blur-md rounded-2xl p-8 shadow-lg"
       >
         <h2 className="text-3xl font-bold text-center mb-6">Get in Touch</h2>
 
         {/* Contact Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium">Name</label>
-            <input {...register("name")} className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500" placeholder="Your Name" />
-            {errors.name && <p className="text-red-400 text-sm mt-1">{errors.name.message}</p>}
+            <label className="block text-sm font-medium dark:text-gray-300">Name</label>
+            <input 
+              {...register("name")} 
+              className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white" 
+              placeholder="Your Name" 
+            />
+            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium">Email</label>
-            <input {...register("email")} className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500" placeholder="Your Email" />
-            {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email.message}</p>}
+            <label className="block text-sm font-medium dark:text-gray-300">Email</label>
+            <input 
+              {...register("email")} 
+              className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white" 
+              placeholder="Your Email" 
+            />
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium">Message</label>
-            <textarea {...register("message")} className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500" rows={4} placeholder="Your Message"></textarea>
-            {errors.message && <p className="text-red-400 text-sm mt-1">{errors.message.message}</p>}
+            <label className="block text-sm font-medium dark:text-gray-300">Message</label>
+            <textarea 
+              {...register("message")} 
+              className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white" 
+              rows={4} 
+              placeholder="Your Message"
+            ></textarea>
+            {errors.message && <p className="text-red-500 text-sm mt-1">{errors.message.message}</p>}
           </div>
 
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 transition text-white font-bold py-2 px-4 rounded-lg"
+            className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition text-white font-bold py-2 px-4 rounded-lg"
           >
             Send Message
           </motion.button>
@@ -93,13 +106,13 @@ export default function Contact() {
 
         {/* Social Links */}
         <div className="flex justify-center gap-6 mt-6">
-          <a href={`mailto:${personalinfo.email}`} className="text-gray-300 hover:text-blue-400 transition">
+          <a href={`mailto:${personalinfo.email}`} className="text-gray-500 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400 transition">
             <Mail size={24} />
           </a>
-          <a href={personalinfo.linkedin} target="_blank" className="text-gray-300 hover:text-blue-400 transition">
+          <a href={personalinfo.linkedin} target="_blank" className="text-gray-500 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400 transition">
             <Linkedin size={24} />
           </a>
-          <a href={personalinfo.github} target="_blank" className="text-gray-300 hover:text-blue-400 transition">
+          <a href={personalinfo.github} target="_blank" className="text-gray-500 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400 transition">
             <Github size={24} />
           </a>
         </div>

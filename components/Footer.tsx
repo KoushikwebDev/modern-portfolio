@@ -56,7 +56,8 @@ export default function Footer() {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Contact</h3>
             <p className="text-gray-600 dark:text-gray-300">
               Email: {personalinfo.email}<br />
-              Location: {personalinfo.location}
+              Location: {personalinfo.location} <br />
+              Phone: {personalinfo.ph}
             </p>
           </div>
         </div>
