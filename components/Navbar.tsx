@@ -15,7 +15,6 @@ const navItems = [
   { name: "Tools", path: "/tools" },
   { name: "Contact", path: "/contact" },
   // { name: "Contact", path: "#footer" },
-
 ];
 
 export default function Navbar() {
@@ -23,7 +22,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <motion.nav 
+    <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       className="fixed w-full top-0 z-50 bg-white/80 backdrop-blur-sm border-b border-gray-200 dark:bg-gray-900/80 dark:border-gray-800"
@@ -31,11 +30,14 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           {/* Logo */}
-          <motion.div 
+          <motion.div
             className="flex-shrink-0 flex items-center"
             whileHover={{ scale: 1.05 }}
           >
-            <Link href="/" className="text-2xl font-bold text-gray-900 dark:text-white">
+            <Link
+              href="/"
+              className="text-2xl font-bold text-gray-900 dark:text-white"
+            >
               {personalinfo.name}
             </Link>
           </motion.div>
@@ -62,13 +64,16 @@ export default function Navbar() {
             ))}
             <ThemeToggle />
           </div>
-
           {/* Mobile Menu Button */}
-          <button
-            className="sm:hidden flex items-center p-2 rounded-md text-gray-600 dark:text-gray-300"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            {isOpen ? <X size={24} /> : <Menu size={24} />}
+          <button className="sm:hidden flex items-center p-2 rounded-md text-gray-600 dark:text-gray-300">
+            <div className="mr-3">
+              <ThemeToggle />
+            </div>
+            {isOpen ? (
+              <X size={27} onClick={() => setIsOpen(false)} />
+            ) : (
+              <Menu size={27} onClick={() => setIsOpen(true)} />
+            )}
           </button>
         </div>
       </div>
@@ -97,7 +102,6 @@ export default function Navbar() {
                   {item.name}
                 </Link>
               ))}
-              <ThemeToggle />
             </div>
           </motion.div>
         )}
