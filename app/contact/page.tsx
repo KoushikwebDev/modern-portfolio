@@ -10,9 +10,9 @@ import personalinfo from "@/lib/personalInfo";
 
 // ✅ Validation Schema
 const schema = yup.object().shape({
-  name: yup.string().required("Name is required"),
-  email: yup.string().email("Invalid email").required("Email is required"),
-  message: yup.string().required("Message is required").min(10, "Message must be at least 10 characters"),
+  name: yup.string().trim().required("Name is required"),
+  email: yup.string().trim().email("Invalid email").required("Email is required"),
+  message: yup.string().trim().required("Message is required").min(10, "Message must be at least 10 characters"),
 });
 
 export default function Contact() {
