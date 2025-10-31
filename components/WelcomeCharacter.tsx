@@ -3,12 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import dynamic from "next/dynamic";
-
-const DotLottieReact = dynamic(
-  () => import("@lottiefiles/dotlottie-react").then((mod) => mod.DotLottieReact),
-  { ssr: false }
-);
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 const WelcomeCharacter = () => {
   const [isVisible, setIsVisible] = useState(false);
