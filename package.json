@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^3.10.0",
     "@lottiefiles/dotlottie-react": "^0.17.6",
     "@next/swc-wasm-nodejs": "13.5.1",
@@ -43,6 +44,7 @@
     "@types/react": "19.0.12",
     "@types/react-dom": "19.0.4",
     "autoprefixer": "10.4.15",
+    "axios": "^1.13.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
