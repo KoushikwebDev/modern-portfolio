@@ -99,7 +99,7 @@ const WelcomeCharacter = () => {
 
                 <div className="pr-6 text-box">
                   <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                    👋 Hey there!
+                    👋 Welcome!
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-line">
                     {aiMessage}
