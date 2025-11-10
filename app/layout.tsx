@@ -5,6 +5,7 @@ import { Providers } from "./providers";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import StarsCanvas from "@/components/StarCanvas";
+import FluidCursor from "@/components/FluidCursor";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,13 +24,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-        <StarsCanvas />
+          <StarsCanvas />
           <Navbar />
-
           {children}
           <Footer />
         </Providers>
       </body>
+      <FluidCursor />
     </html>
   );
 }
