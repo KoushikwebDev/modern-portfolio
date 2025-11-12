@@ -24,13 +24,16 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-          <StarsCanvas />
-          <Navbar />
-          {children}
-          <Footer />
+          <div className="relative" style={{ isolation: 'isolate' }}>
+            <StarsCanvas />
+            <Navbar />
+            {children}
+            <Footer />
+          </div>
         </Providers>
+        <FluidCursor />
       </body>
-      <FluidCursor />
     </html>
   );
 }
+
