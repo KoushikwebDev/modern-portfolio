@@ -191,6 +191,7 @@ export default function CreateReelPage() {
   };
 
   const handleInteractionMove = useCallback((e: MouseEvent | TouchEvent) => {
+    if (e.cancelable) e.preventDefault();
     // Handle Rotation
     if (rotatingItem) {
         const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -254,7 +255,7 @@ export default function CreateReelPage() {
       window.addEventListener('mouseup', handleInteractionEnd);
       window.addEventListener('touchend', handleInteractionEnd);
       window.addEventListener('mousemove', handleInteractionMove);
-      window.addEventListener('touchmove', handleInteractionMove);
+      window.addEventListener('touchmove', handleInteractionMove, { passive: false });
     }
     return () => {
       window.removeEventListener('mouseup', handleInteractionEnd);
