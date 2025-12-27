@@ -538,18 +538,20 @@ export default function CreateReelPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
+          className="text-center mb-8 sm:mb-12"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20 mb-6">
-            <Sparkles className="w-4 h-4 text-violet-400" />
-            <span className="text-sm font-medium bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20 mb-4 sm:mb-6">
+            <Sparkles className="w-4 h-4 text-violet-500" />
+            <span className="text-sm font-medium bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">
               Professional Reel Creator
             </span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-violet-200 to-fuchsia-200 bg-clip-text text-transparent mb-4">
-            Create Stunning Reels
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+            <span className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-violet-600 bg-clip-text text-transparent">
+              Create Stunning Reels
+            </span>
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
             Transform your images and videos into engaging reels for Instagram, Facebook & WhatsApp
           </p>
         </motion.div>
@@ -559,9 +561,9 @@ export default function CreateReelPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="flex justify-center mb-12"
+          className="flex justify-center mb-8 sm:mb-12 px-2"
         >
-          <div className="flex items-center gap-4 p-2 rounded-2xl bg-gradient-to-r from-violet-500/5 to-fuchsia-500/5 border border-violet-500/10">
+          <div className="flex items-center gap-2 sm:gap-4 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-violet-500/5 to-fuchsia-500/5 border border-violet-500/10">
             {[
               { step: "upload", label: "Upload", icon: Upload },
               { step: "configure", label: "Configure", icon: Music },
@@ -575,22 +577,22 @@ export default function CreateReelPage() {
                     else if (item.step === "preview" && isReelReady) setCurrentStep("preview");
                   }}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300",
+                    "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl transition-all duration-300",
                     currentStep === item.step
                       ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/25"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   <item.icon className="w-4 h-4" />
-                  <span className="font-medium text-sm">{item.label}</span>
+                  <span className="font-medium text-xs sm:text-sm hidden xs:inline">{item.label}</span>
                   {(item.step === "upload" && mediaFile) ||
                   (item.step === "configure" && selectedSong) ||
                   (item.step === "preview" && isReelReady) ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <Check className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-emerald-400" />
                   ) : null}
                 </button>
                 {index < 2 && (
-                  <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                  <ChevronRight className="w-3 sm:w-4 h-3 sm:h-4 text-muted-foreground/50" />
                 )}
               </React.Fragment>
             ))}
@@ -626,17 +628,17 @@ export default function CreateReelPage() {
                     <h3 className="text-2xl font-bold text-foreground mb-3">
                       Upload Your Media
                     </h3>
-                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                    <p className="text-muted-foreground mb-6 max-w-md mx-auto text-sm sm:text-base">
                       Drag and drop your image or video here, or click to browse
                     </p>
-                    <div className="flex flex-wrap justify-center gap-4">
-                      <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-500/10 border border-violet-500/20">
-                        <ImageIcon className="w-4 h-4 text-violet-400" />
-                        <span className="text-sm text-violet-300">Images</span>
+                    <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+                      <div className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-violet-500/10 border border-violet-500/20">
+                        <ImageIcon className="w-4 h-4 text-violet-500" />
+                        <span className="text-sm text-violet-600 dark:text-violet-300">Images</span>
                       </div>
-                      <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20">
-                        <Video className="w-4 h-4 text-fuchsia-400" />
-                        <span className="text-sm text-fuchsia-300">Videos</span>
+                      <div className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20">
+                        <Video className="w-4 h-4 text-fuchsia-500" />
+                        <span className="text-sm text-fuchsia-600 dark:text-fuchsia-300">Videos</span>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-4">
@@ -663,7 +665,7 @@ export default function CreateReelPage() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 50 }}
               transition={{ duration: 0.3 }}
-              className="grid lg:grid-cols-2 gap-8"
+              className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8"
             >
               {/* Preview Panel */}
               <div className="relative">
@@ -1209,7 +1211,7 @@ export default function CreateReelPage() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 50 }}
               transition={{ duration: 0.3 }}
-              className="grid lg:grid-cols-2 gap-8"
+              className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8"
             >
               {/* Reel Preview */}
               <div className="relative">
