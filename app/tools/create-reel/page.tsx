@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import EmojiPicker from 'emoji-picker-react';
 import {
   Upload,
   Image as ImageIcon,
@@ -72,6 +73,26 @@ interface MediaFile {
   type: MediaType;
 }
 
+interface TextOverlay {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  rotation: number;
+  color: string;
+  fontSize: number;
+  fontFamily: string;
+}
+
+interface EmojiOverlay {
+  id: string;
+  emoji: string;
+  x: number;
+  y: number;
+  rotation: number;
+  size: number;
+}
+
 export default function CreateReelPage() {
   const [currentStep, setCurrentStep] = useState<Step>("upload");
   const [mediaFile, setMediaFile] = useState<MediaFile | null>(null);
@@ -95,13 +116,153 @@ export default function CreateReelPage() {
   const [audioTab, setAudioTab] = useState<"samples" | "upload">("samples");
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   
+  // Video audio controls
+  const [videoMuted, setVideoMuted] = useState(false);
+  const [videoVolume, setVideoVolume] = useState(100);
+
+  // Overlay states
+  const [textOverlays, setTextOverlays] = useState<TextOverlay[]>([]);
+  const [emojiOverlays, setEmojiOverlays] = useState<EmojiOverlay[]>([]);
+  const [activeOverlayTab, setActiveOverlayTab] = useState<"text" | "emoji" | "effects">("text");
+  const [inputText, setInputText] = useState("");
+  const [selectedTextColor, setSelectedTextColor] = useState("#FFFFFF");
+  const [selectedEffect, setSelectedEffect] = useState("none");
+  const [selectedLayerId, setSelectedLayerId] = useState<{ id: string, type: 'text' | 'emoji' } | null>(null);
+  
+  // Dragging state
+  const [draggingItem, setDraggingItem] = useState<{ id: string; type: "text" | "emoji" } | null>(null);
+  const [resizingItem, setResizingItem] = useState<{ id: string; type: "text" | "emoji"; startY: number; startSize: number } | null>(null);
+  const [rotatingItem, setRotatingItem] = useState<{ id: string; type: "text" | "emoji"; centerX: number; centerY: number; startAngle: number; startRotation: number } | null>(null);
+
+  const EFFECT_PRESETS = [
+    { id: 'none', name: 'Normal', filter: '', vignette: false },
+    { id: 'bw', name: 'B&W', filter: 'grayscale(100%)', vignette: false },
+    { id: 'sepia', name: 'Sepia', filter: 'sepia(100%)', vignette: false },
+    { id: 'vintage', name: 'Vintage', filter: 'sepia(50%) contrast(85%) brightness(110%)', vignette: true },
+    { id: 'blur', name: 'Blur', filter: 'blur(4px)', vignette: false },
+    { id: 'soft-glow', name: 'Soft Glow', filter: 'brightness(120%) blur(1px) contrast(110%)', vignette: false },
+    { id: 'invert', name: 'Invert', filter: 'invert(100%)', vignette: false },
+    { id: 'cinema', name: 'Cinema', filter: 'contrast(120%) saturate(85%)', vignette: true },
+    { id: 'warm', name: 'Warm', filter: 'sepia(30%) saturate(140%) hue-rotate(-10deg)', vignette: false },
+    { id: 'cool', name: 'Cool', filter: 'hue-rotate(180deg) sepia(20%)', vignette: false },
+    { id: 'dramatic', name: 'Dramatic', filter: 'contrast(140%) brightness(90%)', vignette: true },
+  ];
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const configureVideoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
   const audioPreviewTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Dragging & Resizing Logic
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent, id: string, type: "text" | "emoji") => {
+    // Stop propagation so we don't trigger other clicks
+    e.stopPropagation(); 
+    setDraggingItem({ id, type });
+    setSelectedLayerId({ id, type });
+  };
+
+  const handleResizeStart = (e: React.MouseEvent | React.TouchEvent, id: string, type: "text" | "emoji", currentSize: number) => {
+    e.stopPropagation();
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    setResizingItem({ id, type, startY: clientY, startSize: currentSize });
+  };
+
+  const handleRotateStart = (e: React.MouseEvent | React.TouchEvent, id: string, type: "text" | "emoji", xPerc: number, yPerc: number, currentRotation: number) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!previewContainerRef.current) return;
+    
+    const rect = previewContainerRef.current.getBoundingClientRect();
+    const centerX = rect.left + (xPerc / 100) * rect.width;
+    const centerY = rect.top + (yPerc / 100) * rect.height;
+    
+    // Calculate start angle
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    
+    const startAngle = Math.atan2(clientY - centerY, clientX - centerX);
+    
+    setRotatingItem({ id, type, centerX, centerY, startAngle, startRotation: currentRotation });
+  };
+
+  const handleInteractionMove = useCallback((e: MouseEvent | TouchEvent) => {
+    // Handle Rotation
+    if (rotatingItem) {
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+        
+        const currentAngle = Math.atan2(clientY - rotatingItem.centerY, clientX - rotatingItem.centerX);
+        const deltaAngle = currentAngle - rotatingItem.startAngle;
+        const deg = deltaAngle * (180 / Math.PI); // Convert rad to deg
+        const newRotation = (rotatingItem.startRotation + deg);
+        
+        if (rotatingItem.type === "text") {
+            setTextOverlays(prev => prev.map(t => t.id === rotatingItem.id ? { ...t, rotation: newRotation } : t));
+        } else {
+            setEmojiOverlays(prev => prev.map(em => em.id === rotatingItem.id ? { ...em, rotation: newRotation } : em));
+        }
+        return;
+    }
+
+    // Handle Resizing
+    if (resizingItem) {
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+        const diff = (clientY - resizingItem.startY); // Drag down to increase
+        
+        // Scale factor helper (optional, raw pixel diff is fine for now)
+        const newSize = Math.max(10, resizingItem.startSize + diff);
+        
+        if (resizingItem.type === "text") {
+            setTextOverlays(prev => prev.map(t => t.id === resizingItem.id ? { ...t, fontSize: newSize } : t));
+        } else {
+            setEmojiOverlays(prev => prev.map(em => em.id === resizingItem.id ? { ...em, size: newSize } : em));
+        }
+        return;
+    }
+
+    // Handle Dragging
+    if (!draggingItem || !previewContainerRef.current) return;
+
+    // Handle both mouse and touch events
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+
+    const rect = previewContainerRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+
+    if (draggingItem.type === "text") {
+      setTextOverlays(prev => prev.map(t => t.id === draggingItem.id ? { ...t, x, y } : t));
+    } else {
+      setEmojiOverlays(prev => prev.map(em => em.id === draggingItem.id ? { ...em, x, y } : em));
+    }
+  }, [draggingItem, resizingItem, rotatingItem]);
+
+  useEffect(() => {
+    const handleInteractionEnd = () => {
+        setDraggingItem(null);
+        setResizingItem(null);
+        setRotatingItem(null);
+    };
+
+    if (draggingItem || resizingItem || rotatingItem) {
+      window.addEventListener('mouseup', handleInteractionEnd);
+      window.addEventListener('touchend', handleInteractionEnd);
+      window.addEventListener('mousemove', handleInteractionMove);
+      window.addEventListener('touchmove', handleInteractionMove);
+    }
+    return () => {
+      window.removeEventListener('mouseup', handleInteractionEnd);
+      window.removeEventListener('touchend', handleInteractionEnd);
+      window.removeEventListener('mousemove', handleInteractionMove);
+      window.removeEventListener('touchmove', handleInteractionMove);
+    };
+  }, [draggingItem, resizingItem, rotatingItem, handleInteractionMove]);
 
   // Handle file upload
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -206,10 +367,8 @@ export default function CreateReelPage() {
     setAudioTab("upload");
   }, [duration]);
 
-  // Preview audio portion
+  // Preview audio/video portion
   const handlePreviewAudio = useCallback(() => {
-    if (!audioRef.current) return;
-    
     // Clear any existing timeout
     if (audioPreviewTimeout.current) {
       clearTimeout(audioPreviewTimeout.current);
@@ -217,25 +376,43 @@ export default function CreateReelPage() {
     }
     
     if (isAudioPlaying) {
-      audioRef.current.pause();
+      // Pause everything
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      if (configureVideoRef.current) {
+        configureVideoRef.current.pause();
+      }
       setIsAudioPlaying(false);
     } else {
-      // Reload the audio to ensure we have the latest source
-      audioRef.current.load();
-      audioRef.current.currentTime = audioStartTime;
-      audioRef.current.play().catch(console.error);
+      // Play audio if available
+      if (audioRef.current && (selectedSong || customAudio)) {
+        audioRef.current.load();
+        audioRef.current.currentTime = audioStartTime;
+        audioRef.current.play().catch(console.error);
+      }
+      
+      // Play video if it's a video
+      if (configureVideoRef.current && mediaFile?.type === "video") {
+        configureVideoRef.current.currentTime = 0;
+        configureVideoRef.current.play().catch(console.error);
+      }
+      
       setIsAudioPlaying(true);
       
       // Stop after duration
       audioPreviewTimeout.current = setTimeout(() => {
         if (audioRef.current) {
           audioRef.current.pause();
-          setIsAudioPlaying(false);
         }
+        if (configureVideoRef.current) {
+          configureVideoRef.current.pause();
+        }
+        setIsAudioPlaying(false);
         audioPreviewTimeout.current = null;
       }, duration * 1000);
     }
-  }, [isAudioPlaying, audioStartTime, duration]);
+  }, [isAudioPlaying, audioStartTime, duration, selectedSong, customAudio, mediaFile?.type]);
 
   // Format time display
   const formatTime = (seconds: number) => {
@@ -327,6 +504,69 @@ export default function CreateReelPage() {
     }
   }, [isMuted]);
 
+  // Sync video volume and mute state
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = videoMuted;
+      videoRef.current.volume = videoVolume / 100;
+    }
+    if (configureVideoRef.current) {
+      configureVideoRef.current.muted = videoMuted;
+      configureVideoRef.current.volume = videoVolume / 100;
+    }
+  }, [videoMuted, videoVolume]);
+
+  // Sync selectedTextColor with selected layer
+  useEffect(() => {
+    if (selectedLayerId?.type === 'text') {
+        const layer = textOverlays.find(t => t.id === selectedLayerId.id);
+        if (layer) {
+            setSelectedTextColor(layer.color);
+        }
+    }
+  }, [selectedLayerId, textOverlays]);
+
+  // Overlay Handlers
+  const handleAddText = () => {
+    if (!inputText.trim()) return;
+    const newText: TextOverlay = {
+      id: Date.now().toString(),
+      text: inputText,
+      x: 50,
+      y: 50,
+      rotation: 0,
+      color: selectedTextColor,
+      fontSize: 24,
+      fontFamily: "sans-serif"
+    };
+    setTextOverlays([...textOverlays, newText]);
+    setInputText("");
+  };
+
+  const handleRemoveText = (id: string) => {
+    setTextOverlays(textOverlays.filter(t => t.id !== id));
+  };
+
+  const handleAddEmoji = (emoji: string) => {
+    const newEmoji: EmojiOverlay = {
+      id: Date.now().toString(),
+      emoji: emoji,
+      x: 50,
+      y: 50,
+      rotation: 0,
+      size: 48
+    };
+    setEmojiOverlays([...emojiOverlays, newEmoji]);
+  };
+
+  const handleRemoveEmoji = (id: string) => {
+    setEmojiOverlays(emojiOverlays.filter(e => e.id !== id));
+  };
+
+
+
+  const TEXT_COLORS = ["#FFFFFF", "#000000", "#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", "#00FFFF"];
+
   // Download reel - Creates video with audio using MediaRecorder
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
@@ -414,7 +654,9 @@ export default function CreateReelPage() {
         setExportProgress(Math.floor(progress * 100));
 
         // Apply filters
-        ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
+        const preset = EFFECT_PRESETS.find(e => e.id === selectedEffect);
+        const presetFilter = preset ? preset.filter : '';
+        ctx.filter = `${presetFilter} brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`.trim();
 
         if (mediaFile.type === "image") {
           const img = new Image();
@@ -431,6 +673,59 @@ export default function CreateReelPage() {
           const y = (canvas.height - video.videoHeight * scale) / 2;
           ctx.drawImage(video, x, y, video.videoWidth * scale, video.videoHeight * scale);
         }
+
+        // Apply Vignette if enabled
+        if (preset?.vignette) {
+           const gradient = ctx.createRadialGradient(
+             canvas.width / 2, canvas.height / 2, canvas.height / 3,
+             canvas.width / 2, canvas.height / 2, canvas.height
+           );
+           gradient.addColorStop(0, 'rgba(0,0,0,0)');
+           gradient.addColorStop(1, 'rgba(0,0,0,0.6)');
+           ctx.fillStyle = gradient;
+           ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Draw Overlays
+        ctx.filter = "none"; // Reset filters for overlays
+        
+        const scaleFactor = canvas.height / 500; // Approximate scale based on preview height
+
+        // Draw Text
+        textOverlays.forEach(layer => {
+          ctx.save();
+          const x = (layer.x / 100) * canvas.width;
+          const y = (layer.y / 100) * canvas.height;
+          ctx.translate(x, y);
+          ctx.rotate((layer.rotation * Math.PI) / 180);
+          
+          ctx.font = `bold ${layer.fontSize * scaleFactor}px ${layer.fontFamily}`;
+          ctx.fillStyle = layer.color;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.shadowColor = "rgba(0,0,0,0.8)";
+          ctx.shadowBlur = 4;
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 2;
+          ctx.fillText(layer.text, 0, 0);
+          ctx.restore();
+        });
+
+        // Draw Emojis
+        emojiOverlays.forEach(layer => {
+          ctx.save();
+          const x = (layer.x / 100) * canvas.width;
+          const y = (layer.y / 100) * canvas.height;
+          ctx.translate(x, y);
+          ctx.rotate((layer.rotation * Math.PI) / 180);
+
+          ctx.font = `${layer.size * scaleFactor}px serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.shadowColor = "rgba(0,0,0,0.5)";
+          ctx.fillText(layer.emoji, 0, 0);
+          ctx.restore();
+        });
 
         frameCount++;
 
@@ -496,6 +791,8 @@ export default function CreateReelPage() {
     setAudioStartTime(0);
     setAudioTab("samples");
     setIsAudioPlaying(false);
+    setVideoMuted(false);
+    setVideoVolume(100);
     setCurrentStep("upload");
     setIsReelReady(false);
     setIsPlaying(false);
@@ -520,8 +817,15 @@ export default function CreateReelPage() {
   };
 
   // Filter styles for preview
+  // Filter styles for preview
+  const getFilterString = () => {
+    const preset = EFFECT_PRESETS.find(e => e.id === selectedEffect);
+    const presetFilter = preset ? preset.filter : '';
+    return `${presetFilter} brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`.trim();
+  };
+
   const filterStyle = {
-    filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`,
+    filter: getFilterString(),
   };
 
   return (
@@ -685,15 +989,18 @@ export default function CreateReelPage() {
                     </div>
                     <div className="flex justify-center">
                       <div
+                        ref={previewContainerRef}
+                        onClick={() => setSelectedLayerId(null)}
                         className="relative overflow-hidden rounded-xl bg-black/50"
                         style={getPreviewStyles()}
                       >
                         {mediaFile.type === "video" ? (
                           <video
+                            ref={configureVideoRef}
                             src={mediaFile.url}
                             className="w-full h-full object-cover"
                             style={filterStyle}
-                            muted
+                            muted={videoMuted}
                           />
                         ) : (
                           <img
@@ -703,6 +1010,131 @@ export default function CreateReelPage() {
                             style={filterStyle}
                           />
                         )}
+                        {/* Vignette Overlay */}
+                        {EFFECT_PRESETS.find(e => e.id === selectedEffect)?.vignette && (
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_50%,rgba(0,0,0,0.6)_100%)] pointer-events-none z-10" />
+                        )}
+
+                        {/* Text Overlays */}
+                        {textOverlays.map((layer) => (
+                          <div
+                            key={layer.id}
+                            onMouseDown={(e) => handleDragStart(e, layer.id, 'text')}
+                            onTouchStart={(e) => handleDragStart(e, layer.id, 'text')}
+                            onClick={(e) => e.stopPropagation()}
+                            className={cn(
+                              "absolute transform -translate-x-1/2 -translate-y-1/2 whitespace-nowrap z-30 cursor-move select-none",
+                              selectedLayerId?.id === layer.id && "ring-2 ring-violet-500 rounded px-1 bg-black/20"
+                            )}
+                            style={{
+                              left: `${layer.x}%`,
+                              top: `${layer.y}%`,
+                              color: layer.color,
+                              fontSize: `${layer.fontSize}px`,
+                              fontFamily: layer.fontFamily,
+                              textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
+                              fontWeight: "bold",
+                              transform: `translate(-50%, -50%) rotate(${layer.rotation}deg)`
+                            }}
+                          >
+                            {layer.text}
+                            {/* Resize Handle */}
+                            {selectedLayerId?.id === layer.id && (
+                               <div
+                                 onMouseDown={(e) => handleResizeStart(e, layer.id, 'text', layer.fontSize)}
+                                 onTouchStart={(e) => handleResizeStart(e, layer.id, 'text', layer.fontSize)}
+                                 className="absolute -bottom-2 -right-2 w-4 h-4 bg-violet-500 rounded-full cursor-se-resize z-40 shadow-lg border border-white"
+                               />
+                            )}
+                            
+                            {/* Rotation Handle */}
+                            {selectedLayerId?.id === layer.id && (
+                               <>
+                                <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-green-500 pointer-events-none" />
+                                <div
+                                 onMouseDown={(e) => handleRotateStart(e, layer.id, 'text', layer.x, layer.y, layer.rotation)}
+                                 onTouchStart={(e) => handleRotateStart(e, layer.id, 'text', layer.x, layer.y, layer.rotation)}
+                                 className="absolute -top-6 left-1/2 -translate-x-1/2 w-5 h-5 bg-green-500 rounded-full cursor-grab z-40 shadow-lg border-2 border-white flex items-center justify-center"
+                                >
+                                  <RotateCcw className="w-3 h-3 text-white" />
+                                </div>
+                               </>
+                            )}
+                            
+                            {/* Delete Handle */}
+                            {selectedLayerId?.id === layer.id && (
+                               <div
+                                 onClick={(e) => {
+                                     e.stopPropagation();
+                                     handleRemoveText(layer.id);
+                                     setSelectedLayerId(null);
+                                 }}
+                                 className="absolute -top-3 -right-3 w-5 h-5 bg-red-500 rounded-full cursor-pointer z-50 shadow-lg border-2 border-white flex items-center justify-center hover:bg-red-600 hover:scale-110 transition-all"
+                               >
+                                 <X className="w-3 h-3 text-white" />
+                               </div>
+                            )}
+                          </div>
+                        ))}
+
+                        {/* Emoji Overlays */}
+                        {emojiOverlays.map((layer) => (
+                          <div
+                            key={layer.id}
+                            onMouseDown={(e) => handleDragStart(e, layer.id, 'emoji')}
+                            onTouchStart={(e) => handleDragStart(e, layer.id, 'emoji')}
+                            onClick={(e) => e.stopPropagation()}
+                            className={cn(
+                              "absolute transform -translate-x-1/2 -translate-y-1/2 z-30 cursor-move select-none",
+                              selectedLayerId?.id === layer.id && "ring-2 ring-violet-500 rounded px-1 bg-black/20"
+                            )}
+                            style={{
+                              left: `${layer.x}%`,
+                              top: `${layer.y}%`,
+                              fontSize: `${layer.size}px`,
+                              transform: `translate(-50%, -50%) rotate(${layer.rotation}deg)`
+                            }}
+                          >
+                            {layer.emoji}
+                            {/* Resize Handle */}
+                            {selectedLayerId?.id === layer.id && (
+                               <div
+                                 onMouseDown={(e) => handleResizeStart(e, layer.id, 'emoji', layer.size)}
+                                 onTouchStart={(e) => handleResizeStart(e, layer.id, 'emoji', layer.size)}
+                                 className="absolute -bottom-2 -right-2 w-4 h-4 bg-violet-500 rounded-full cursor-se-resize z-40 shadow-lg border border-white"
+                               />
+                            )}
+                            
+                            {/* Rotation Handle */}
+                            {selectedLayerId?.id === layer.id && (
+                               <>
+                                <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-green-500 pointer-events-none" />
+                                <div
+                                 onMouseDown={(e) => handleRotateStart(e, layer.id, 'emoji', layer.x, layer.y, layer.rotation)}
+                                 onTouchStart={(e) => handleRotateStart(e, layer.id, 'emoji', layer.x, layer.y, layer.rotation)}
+                                 className="absolute -top-6 left-1/2 -translate-x-1/2 w-5 h-5 bg-green-500 rounded-full cursor-grab z-40 shadow-lg border-2 border-white flex items-center justify-center"
+                                >
+                                  <RotateCcw className="w-3 h-3 text-white" />
+                                </div>
+                               </>
+                            )}
+                            
+                            {/* Delete Handle */}
+                            {selectedLayerId?.id === layer.id && (
+                               <div
+                                 onClick={(e) => {
+                                     e.stopPropagation();
+                                     handleRemoveEmoji(layer.id);
+                                     setSelectedLayerId(null);
+                                 }}
+                                 className="absolute -top-3 -right-3 w-5 h-5 bg-red-500 rounded-full cursor-pointer z-50 shadow-lg border-2 border-white flex items-center justify-center hover:bg-red-600 hover:scale-110 transition-all"
+                               >
+                                 <X className="w-3 h-3 text-white" />
+                               </div>
+                            )}
+                          </div>
+                        ))}
+
                         {/* Platform Badge */}
                         <div className="absolute top-3 left-3 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm border border-white/10">
                           <span className="text-xs font-medium text-white">
@@ -716,26 +1148,7 @@ export default function CreateReelPage() {
                           </span>
                         </div>
                         
-                        {/* Play/Pause Button Overlay */}
-                        {(selectedSong || customAudio) && (
-                          <button
-                            onClick={handlePreviewAudio}
-                            className="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/40 transition-colors"
-                          >
-                            <div className={cn(
-                              "w-14 h-14 rounded-full flex items-center justify-center transition-all",
-                              isAudioPlaying 
-                                ? "bg-violet-600 shadow-lg shadow-violet-500/50" 
-                                : "bg-white/20 backdrop-blur-sm hover:bg-white/30"
-                            )}>
-                              {isAudioPlaying ? (
-                                <Pause className="w-7 h-7 text-white" />
-                              ) : (
-                                <Play className="w-7 h-7 text-white ml-1" />
-                              )}
-                            </div>
-                          </button>
-                        )}
+                        {/* Play/Pause Button Overlay Removed - Moved Outside */}
                         
                         {/* Audio Waveform Animation */}
                         {(selectedSong || customAudio) && (
@@ -764,7 +1177,57 @@ export default function CreateReelPage() {
                             )}
                           </div>
                         )}
+                        
+                        {/* Video Playing Indicator (when no audio selected) */}
+                        {mediaFile.type === "video" && !selectedSong && !customAudio && isAudioPlaying && (
+                          <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10">
+                            <Video className="w-3 h-3 text-fuchsia-400 shrink-0" />
+                            <span className="text-xs text-white">Video Playing</span>
+                            <div className="flex items-end gap-0.5 ml-auto">
+                              {[...Array(5)].map((_, i) => (
+                                <motion.div
+                                  key={i}
+                                  className="w-0.5 bg-fuchsia-400 rounded-full"
+                                  animate={{
+                                    height: [4, 8 + Math.random() * 8, 4],
+                                  }}
+                                  transition={{
+                                    duration: 0.5,
+                                    repeat: Infinity,
+                                    delay: i * 0.1,
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
+                    </div>
+
+                    {/* External Play Controls */}
+                    <div className="mt-4 flex justify-center">
+                        <Button
+                          onClick={handlePreviewAudio}
+                          disabled={!selectedSong && !customAudio && mediaFile.type !== "video"}
+                          className={cn(
+                             "w-full rounded-xl transition-all h-12 text-base font-medium",
+                             isAudioPlaying 
+                               ? "bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-500/25" 
+                               : "bg-violet-600/10 hover:bg-violet-600/20 text-violet-600 border border-violet-500/20"
+                          )}
+                        >
+                            {isAudioPlaying ? (
+                                <>
+                                    <Pause className="w-5 h-5 mr-2" />
+                                    Pause Preview
+                                </>
+                            ) : (
+                                <>
+                                    <Play className="w-5 h-5 mr-2" />
+                                    Play Preview
+                                </>
+                            )}
+                        </Button>
                     </div>
                     
                     {/* Hidden Audio Element for Configure Preview */}
@@ -901,6 +1364,74 @@ export default function CreateReelPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Video Audio Controls - Only show when video is uploaded */}
+                {mediaFile?.type === "video" && (
+                  <div className="p-6 rounded-2xl bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5 border border-violet-500/20">
+                    <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                      <Volume2 className="w-5 h-5 text-violet-400" />
+                      Video Audio
+                    </h3>
+                    
+                    {/* Mute Toggle */}
+                    <div className="flex items-center justify-between mb-4 p-3 rounded-xl bg-background/50 border border-border">
+                      <div className="flex items-center gap-3">
+                        {videoMuted ? (
+                          <VolumeX className="w-5 h-5 text-red-400" />
+                        ) : (
+                          <Volume2 className="w-5 h-5 text-violet-400" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            {videoMuted ? "Video Audio Muted" : "Video Audio Enabled"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {videoMuted ? "Original video sound is off" : "Original video sound will be included"}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setVideoMuted(!videoMuted)}
+                        className={cn(
+                          "relative w-12 h-6 rounded-full transition-colors duration-300",
+                          videoMuted ? "bg-red-500/20" : "bg-violet-600"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-all duration-300",
+                            videoMuted ? "left-1" : "left-7"
+                          )}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Volume Slider */}
+                    {!videoMuted && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Volume Level</span>
+                          <span className="text-sm font-medium text-violet-400">{videoVolume}%</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <VolumeX className="w-4 h-4 text-muted-foreground" />
+                          <Slider
+                            value={[videoVolume]}
+                            onValueChange={([val]) => setVideoVolume(val)}
+                            min={0}
+                            max={100}
+                            step={5}
+                            className="flex-1"
+                          />
+                          <Volume2 className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Reduce the volume to let the background music be more prominent
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Audio Selection with Tabs */}
                 <div className="p-6 rounded-2xl bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5 border border-violet-500/20">
@@ -1176,30 +1707,262 @@ export default function CreateReelPage() {
                   )}
                 </div>
 
+                {/* Overlays & Effects */}
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-violet-500/5 to-fuchsia-500/5 border border-violet-500/20 mt-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-violet-400" />
+                    Overlays & Effects
+                  </h3>
+                  
+                  <Tabs value={activeOverlayTab} onValueChange={(v) => setActiveOverlayTab(v as any)} className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 mb-4">
+                      <TabsTrigger value="text">Text</TabsTrigger>
+                      <TabsTrigger value="emoji">Emoji</TabsTrigger>
+                      <TabsTrigger value="effects">Effects</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="text" className="space-y-4">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={inputText}
+                          onChange={(e) => setInputText(e.target.value)}
+                          placeholder="Enter text..."
+                          className="flex-1 px-3 py-2 text-sm bg-background/50 border border-violet-500/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                          onKeyDown={(e) => e.key === "Enter" && handleAddText()}
+                        />
+                        <Button onClick={handleAddText} disabled={!inputText.trim()} size="icon" className="bg-violet-600 hover:bg-violet-700 shrink-0">
+                          <Check className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        {TEXT_COLORS.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => {
+                                setSelectedTextColor(color);
+                                if (selectedLayerId?.type === 'text') {
+                                    setTextOverlays(prev => prev.map(t => 
+                                        t.id === selectedLayerId.id ? { ...t, color: color } : t
+                                    ));
+                                }
+                            }}
+                            className={cn(
+                              "w-6 h-6 rounded-full border-2 transition-all",
+                              selectedTextColor === color ? "border-white scale-110 shadow-lg" : "border-transparent opacity-70 hover:opacity-100"
+                            )}
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Text Size Slider */}
+                      {selectedLayerId?.type === 'text' && (
+                        <div className="pt-2 px-1">
+                           <div className="flex justify-between mb-2">
+                             <span className="text-xs font-medium text-muted-foreground">Text Size</span>
+                             <span className="text-xs text-foreground font-mono">
+                               {textOverlays.find(t => t.id === selectedLayerId.id)?.fontSize || 24}px
+                             </span>
+                           </div>
+                           <Slider
+                             value={[textOverlays.find(t => t.id === selectedLayerId.id)?.fontSize || 24]}
+                             onValueChange={([val]) => setTextOverlays(prev => prev.map(t => t.id === selectedLayerId!.id ? { ...t, fontSize: val } : t))}
+                             min={12}
+                             max={120}
+                             step={2}
+                           />
+                        </div>
+                      )}
+
+                      {/* Active Text Layers */}
+                      {textOverlays.length > 0 && (
+                        <div className="space-y-2 mt-4">
+                          <p className="text-xs text-muted-foreground font-medium">Active Text:</p>
+                          {textOverlays.map((layer) => (
+                            <div key={layer.id} className="flex items-center justify-between p-2 rounded-lg bg-background/50 border border-border">
+                              <div className="flex items-center gap-2 overflow-hidden">
+                                <div className="w-4 h-4 rounded-full border border-border shrink-0" style={{ backgroundColor: layer.color }} />
+                                <span className="text-sm truncate text-foreground">{layer.text}</span>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleRemoveText(layer.id)}
+                                className="h-6 w-6 p-0 text-red-400 hover:text-red-500 hover:bg-red-500/10"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="emoji" className="space-y-4">
+                       <div className="w-full flex justify-center">
+                          <EmojiPicker
+                            onEmojiClick={(data) => handleAddEmoji(data.emoji)}
+                            width="100%"
+                            height={350}
+                            lazyLoadEmojis
+                            previewConfig={{ showPreview: false }}
+                          />
+                        </div>
+                       
+                       {/* Emoji Size Slider */}
+                       {selectedLayerId?.type === 'emoji' && (
+                          <div className="pt-2 px-1">
+                             <div className="flex justify-between mb-2">
+                               <span className="text-xs font-medium text-muted-foreground">Emoji Size</span>
+                               <span className="text-xs text-foreground font-mono">
+                                 {emojiOverlays.find(e => e.id === selectedLayerId.id)?.size || 40}px
+                               </span>
+                             </div>
+                             <Slider
+                               value={[emojiOverlays.find(e => e.id === selectedLayerId.id)?.size || 40]}
+                               onValueChange={([val]) => setEmojiOverlays(prev => prev.map(e => e.id === selectedLayerId!.id ? { ...e, size: val } : e))}
+                               min={20}
+                               max={150}
+                               step={2}
+                             />
+                          </div>
+                       )}
+
+                       {/* Active Emoji Layers */}
+                       {emojiOverlays.length > 0 && (
+                        <div className="space-y-2 mt-4">
+                          <p className="text-xs text-muted-foreground font-medium">Active Emojis:</p>
+                          {emojiOverlays.map((layer) => (
+                            <div key={layer.id} className="flex items-center justify-between p-2 rounded-lg bg-background/50 border border-border">
+                              <span className="text-xl">{layer.emoji}</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleRemoveEmoji(layer.id)}
+                                className="h-6 w-6 p-0 text-red-500 hover:bg-red-500/10"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="effects" className="space-y-6">
+                      <div className="grid grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                        {EFFECT_PRESETS.map((effect) => (
+                          <button
+                            key={effect.id}
+                            onClick={() => setSelectedEffect(effect.id)}
+                            className={cn(
+                              "flex flex-col gap-2 p-2 rounded-xl border transition-all text-left group",
+                              selectedEffect === effect.id
+                                ? "bg-violet-500/10 border-violet-500 ring-1 ring-violet-500"
+                                : "bg-background/50 border-border hover:border-violet-500/50"
+                            )}
+                          >
+                             <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black/20">
+                               {mediaFile && (mediaFile.type === 'video' ? (
+                                  <video 
+                                    src={mediaFile.url}
+                                    className="w-full h-full object-cover"
+                                    style={{ filter: effect.filter }}
+                                    muted
+                                  />
+                               ) : (
+                                  <img 
+                                    src={mediaFile.url}
+                                    className="w-full h-full object-cover"
+                                    style={{ filter: effect.filter }}
+                                  />
+                               ))}
+                               {effect.vignette && (
+                                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_50%,rgba(0,0,0,0.6)_100%)]" />
+                               )}
+                             </div>
+                             <span className="text-xs font-medium pl-1 group-hover:text-violet-400 transition-colors">
+                               {effect.name}
+                             </span>
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="space-y-4 pt-4 border-t border-border/50">
+                        <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                          <Edit3 className="w-3 h-3" /> Fine Tune
+                        </h4>
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-foreground">Brightness</span>
+                            <span className="text-xs text-muted-foreground">{brightness}%</span>
+                          </div>
+                          <Slider
+                            value={[brightness]}
+                            onValueChange={([val]) => setBrightness(val)}
+                            min={50}
+                            max={150}
+                            step={1}
+                            className="w-full"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-foreground">Contrast</span>
+                            <span className="text-xs text-muted-foreground">{contrast}%</span>
+                          </div>
+                          <Slider
+                            value={[contrast]}
+                            onValueChange={([val]) => setContrast(val)}
+                            min={50}
+                            max={150}
+                            step={1}
+                            className="w-full"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-foreground">Saturation</span>
+                            <span className="text-xs text-muted-foreground">{saturation}%</span>
+                          </div>
+                          <Slider
+                            value={[saturation]}
+                            onValueChange={([val]) => setSaturation(val)}
+                            min={0}
+                            max={200}
+                            step={1}
+                            className="w-full"
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+
                 {/* Apply Button */}
-                <Button
-                  onClick={handleApply}
-                  disabled={(!selectedSong && !customAudio) || isProcessing}
-                  className={cn(
-                    "w-full h-14 text-lg font-semibold rounded-xl transition-all duration-300",
-                    "bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500",
-                    "shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40",
-                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                  )}
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-5 h-5 mr-2" />
-                      Create Reel
-                    </>
-                  )}
-                </Button>
+                <div className="mt-8">
+                  <Button
+                    onClick={handleApply}
+                    disabled={isProcessing || !mediaFile || (!selectedSong && !customAudio)}
+                    className="w-full h-12 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white rounded-xl shadow-lg shadow-violet-500/25 transition-all duration-300"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Processing Reel...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-5 h-5 mr-2" />
+                        Create Reel
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
+
             </motion.div>
           )}
 
@@ -1239,6 +2002,8 @@ export default function CreateReelPage() {
                   
                   <div className="flex justify-center">
                     <div
+                      ref={previewContainerRef}
+                      onClick={() => setSelectedLayerId(null)}
                       className="relative overflow-hidden rounded-xl bg-black shadow-2xl shadow-violet-500/20"
                       style={getPreviewStyles()}
                     >
@@ -1248,7 +2013,7 @@ export default function CreateReelPage() {
                           src={mediaFile.url}
                           className="w-full h-full object-cover"
                           style={filterStyle}
-                          muted={isMuted}
+                          muted={videoMuted || isMuted}
                           loop
                         />
                       ) : (
@@ -1260,19 +2025,80 @@ export default function CreateReelPage() {
                         />
                       )}
                       
-                      {/* Play/Pause Overlay */}
-                      <button
-                        onClick={togglePlay}
-                        className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity"
-                      >
-                        <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                          {isPlaying ? (
-                            <Pause className="w-8 h-8 text-white" />
-                          ) : (
-                            <Play className="w-8 h-8 text-white ml-1" />
-                          )}
+                      {/* Vignette Overlay */}
+                      {EFFECT_PRESETS.find(e => e.id === selectedEffect)?.vignette && (
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_50%,rgba(0,0,0,0.6)_100%)] pointer-events-none z-10" />
+                      )}
+                      
+                      {/* Text Overlays */}
+                      {textOverlays.map((layer) => (
+                        <div
+                          key={layer.id}
+                          onMouseDown={(e) => handleDragStart(e, layer.id, 'text')}
+                          onTouchStart={(e) => handleDragStart(e, layer.id, 'text')}
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute transform -translate-x-1/2 -translate-y-1/2 whitespace-nowrap z-30 cursor-move select-none"
+                          style={{
+                            left: `${layer.x}%`,
+                            top: `${layer.y}%`,
+                            color: layer.color,
+                            fontSize: `${layer.fontSize}px`,
+                            fontFamily: layer.fontFamily,
+                            textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
+                            fontWeight: "bold",
+                            transform: `translate(-50%, -50%) rotate(${layer.rotation}deg)`
+                          }}
+                        >
+                          {layer.text}
+                          {/* Delete Handle */}
+                            {selectedLayerId?.id === layer.id && (
+                               <div
+                                 onClick={(e) => {
+                                     e.stopPropagation();
+                                     handleRemoveText(layer.id);
+                                     setSelectedLayerId(null);
+                                 }}
+                                 className="absolute -top-3 -right-3 w-5 h-5 bg-red-500 rounded-full cursor-pointer z-50 shadow-lg border-2 border-white flex items-center justify-center hover:bg-red-600 hover:scale-110 transition-all"
+                               >
+                                 <X className="w-3 h-3 text-white" />
+                               </div>
+                            )}
                         </div>
-                      </button>
+                      ))}
+
+                      {/* Emoji Overlays */}
+                      {emojiOverlays.map((layer) => (
+                        <div
+                          key={layer.id}
+                          onMouseDown={(e) => handleDragStart(e, layer.id, 'emoji')}
+                          onTouchStart={(e) => handleDragStart(e, layer.id, 'emoji')}
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute transform -translate-x-1/2 -translate-y-1/2 z-30 cursor-move select-none"
+                          style={{
+                            left: `${layer.x}%`,
+                            top: `${layer.y}%`,
+                            fontSize: `${layer.size}px`,
+                            transform: `translate(-50%, -50%) rotate(${layer.rotation}deg)`
+                          }}
+                        >
+                          {layer.emoji}
+                          {/* Delete Handle */}
+                            {selectedLayerId?.id === layer.id && (
+                               <div
+                                 onClick={(e) => {
+                                     e.stopPropagation();
+                                     handleRemoveEmoji(layer.id);
+                                     setSelectedLayerId(null);
+                                 }}
+                                 className="absolute -top-3 -right-3 w-5 h-5 bg-red-500 rounded-full cursor-pointer z-50 shadow-lg border-2 border-white flex items-center justify-center hover:bg-red-600 hover:scale-110 transition-all"
+                               >
+                                 <X className="w-3 h-3 text-white" />
+                               </div>
+                            )}
+                        </div>
+                      ))}
+                      
+                      {/* Play/Pause Overlay Removed */}
 
                       {/* Progress Bar */}
                       <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
