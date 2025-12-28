@@ -13,6 +13,9 @@ export const metadata: Metadata = {
   title: "Modern Portfolio",
   description:
     "A beautiful portfolio website built with Next.js and Framer Motion",
+  icons: {
+    icon: '/favicon.png',
+  },
 };
 
 export default function RootLayout({
