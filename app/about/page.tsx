@@ -23,6 +23,10 @@ const skills = [
   "OpenAI API",
   "Firebase",
   "NextAuth",
+  "Java",
+  "Spring Boot",
+  "MySQL",
+  "PostgreSQL",
 ];
 
 export default function Page() {
