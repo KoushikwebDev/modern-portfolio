@@ -5,11 +5,13 @@ import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import axios from "axios";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { useDesignRotator } from "./DesignRotator";
 
 const WelcomeCharacter = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
   const [aiMessage, setAiMessage] = useState("Loading something fun... 🤖");
+  const { currentTheme } = useDesignRotator();
 
   useEffect(() => { 
     async function fetchAIMessage() {
@@ -53,6 +55,22 @@ const WelcomeCharacter = () => {
     setTimeout(() => setIsVisible(false), 300);
   };
 
+  const getBubbleStyles = () => {
+    if (currentTheme.layout === "brutalist") {
+      return `${currentTheme.cardBg} ${currentTheme.cardBorder} ${currentTheme.cardShadow}`;
+    }
+    if (currentTheme.layout === "glassmorphism") {
+      return `${currentTheme.cardBg} ${currentTheme.cardBorder} ${currentTheme.cardShadow} backdrop-blur-xl`;
+    }
+    if (currentTheme.layout === "3d") {
+      return `${currentTheme.cardBg} ${currentTheme.cardBorder} ${currentTheme.cardShadow}`;
+    }
+    if (currentTheme.layout === "retro") {
+      return `${currentTheme.cardBg} ${currentTheme.cardBorder} ${currentTheme.cardShadow}`;
+    }
+    return `${currentTheme.cardBg} ${currentTheme.cardBorder} ${currentTheme.cardShadow}`;
+  };
+
   return (
     <AnimatePresence>
       {isVisible && (
@@ -88,20 +106,20 @@ const WelcomeCharacter = () => {
                 initial={{ opacity: 0, scale: 0.8, x: 20 }}
                 animate={{ opacity: 1, scale: 1, x: 0 }}
                 exit={{ opacity: 0, scale: 0.8, x: 20 }}
-                className="absolute bottom-10 right-40 bg-white dark:bg-gray-800 shadow-lg p-4 w-96 border border-gray-200 dark:border-gray-700 rounded-md"
+                className={`absolute bottom-10 right-40 p-4 w-96 transition-all duration-700 ${getBubbleStyles()}`}
               >
                 <button
                   onClick={handleClose}
-                  className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className={`absolute top-2 right-2 transition-all duration-700 ${currentTheme.textSecondary} hover:${currentTheme.textPrimary}`}
                 >
                   <X size={16} />
                 </button>
 
                 <div className="pr-6 text-box">
-                  <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                  <h3 className={`font-semibold mb-2 transition-all duration-700 ${currentTheme.textPrimary}`}>
                     👋 Welcome!
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-line">
+                  <p className={`text-sm whitespace-pre-line transition-all duration-700 ${currentTheme.textSecondary}`}>
                     {aiMessage}
                   </p>
                 </div>

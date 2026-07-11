@@ -7,6 +7,7 @@ import * as yup from "yup";
 import { motion } from "framer-motion";
 import { Mail, Linkedin, Github } from "lucide-react";
 import personalinfo from "@/lib/personalInfo";
+import { useDesignRotator } from "@/components/DesignRotator";
 
 // ✅ Validation Schema
 const schema = yup.object().shape({
@@ -20,6 +21,7 @@ export default function Contact() {
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     resolver: yupResolver(schema),
   });
+  const { currentTheme } = useDesignRotator();
 
   // ✅ Handle Form Submission
   const onSubmit = async (data: any) => {
@@ -42,40 +44,40 @@ export default function Contact() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-white px-4">
+    <div className={`min-h-screen flex items-center justify-center transition-all duration-700 ${currentTheme.pageBg} px-4`}>
       <motion.div 
         initial={{ opacity: 0, y: 50 }} 
         animate={{ opacity: 1, y: 0 }} 
         transition={{ duration: 1 }}
-        className="w-full max-w-lg bg-white dark:bg-gray-800/70 backdrop-blur-md rounded-2xl p-8 shadow-lg"
+        className={`w-full max-w-lg transition-all duration-700 ${currentTheme.cardBg} ${currentTheme.cardBorder} ${currentTheme.cardShadow} rounded-2xl p-8`}
       >
-        <h2 className="text-3xl font-bold text-center mb-6">Get in Touch</h2>
+        <h2 className={`text-3xl font-bold text-center mb-6 transition-colors duration-700 ${currentTheme.textPrimary}`}>Get in Touch</h2>
 
         {/* Contact Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium dark:text-gray-300">Name</label>
+            <label className={`block text-sm font-medium mb-1 transition-colors duration-700 ${currentTheme.textSecondary}`}>Name</label>
             <input 
               {...register("name")} 
-              className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white" 
+              className={`w-full px-4 py-2 rounded-lg transition-all duration-700 ${currentTheme.inputBg} ${currentTheme.inputBorder} ${currentTheme.inputFocus}`} 
               placeholder="Your Name" 
             />
             {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium dark:text-gray-300">Email</label>
+            <label className={`block text-sm font-medium mb-1 transition-colors duration-700 ${currentTheme.textSecondary}`}>Email</label>
             <input 
               {...register("email")} 
-              className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white" 
+              className={`w-full px-4 py-2 rounded-lg transition-all duration-700 ${currentTheme.inputBg} ${currentTheme.inputBorder} ${currentTheme.inputFocus}`} 
               placeholder="Your Email" 
             />
             {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium dark:text-gray-300">Message</label>
+            <label className={`block text-sm font-medium mb-1 transition-colors duration-700 ${currentTheme.textSecondary}`}>Message</label>
             <textarea 
               {...register("message")} 
-              className="w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white" 
+              className={`w-full px-4 py-2 rounded-lg transition-all duration-700 ${currentTheme.inputBg} ${currentTheme.inputBorder} ${currentTheme.inputFocus}`} 
               rows={4} 
               placeholder="Your Message"
             ></textarea>
@@ -86,7 +88,7 @@ export default function Contact() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition text-white font-bold py-2 px-4 rounded-lg"
+            className={`w-full py-2 px-4 rounded-lg transition-all duration-700 ${currentTheme.btnPrimary}`}
           >
             Send Message
           </motion.button>
@@ -106,13 +108,13 @@ export default function Contact() {
 
         {/* Social Links */}
         <div className="flex justify-center gap-6 mt-6">
-          <a href={`mailto:${personalinfo.email}`} className="text-gray-500 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400 transition">
+          <a href={`mailto:${personalinfo.email}`} className={`transition-colors duration-700 ${currentTheme.textSecondary} hover:${currentTheme.accentColor.replace('text-', '')}`}>
             <Mail size={24} />
           </a>
-          <a href={personalinfo.linkedin} target="_blank" className="text-gray-500 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400 transition">
+          <a href={personalinfo.linkedin} target="_blank" className={`transition-colors duration-700 ${currentTheme.textSecondary} hover:${currentTheme.accentColor.replace('text-', '')}`}>
             <Linkedin size={24} />
           </a>
-          <a href={personalinfo.github} target="_blank" className="text-gray-500 hover:text-blue-500 dark:text-gray-300 dark:hover:text-blue-400 transition">
+          <a href={personalinfo.github} target="_blank" className={`transition-colors duration-700 ${currentTheme.textSecondary} hover:${currentTheme.accentColor.replace('text-', '')}`}>
             <Github size={24} />
           </a>
         </div>

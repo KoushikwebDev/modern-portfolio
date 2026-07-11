@@ -6,6 +6,8 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import StarsCanvas from "@/components/StarCanvas";
 import FluidCursor from "@/components/FluidCursor";
+import { DesignRotator } from "@/components/DesignRotator";
+import { DesignIndicator } from "@/components/DesignIndicator";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,16 +29,18 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-          <div className="relative" style={{ isolation: 'isolate' }}>
-            <StarsCanvas />
-            <Navbar />
-            {children}
-            <Footer />
-          </div>
+          <DesignRotator>
+            <div className="relative" style={{ isolation: 'isolate' }}>
+              <StarsCanvas />
+              <Navbar />
+              {children}
+              <Footer />
+            </div>
+            <DesignIndicator />
+          </DesignRotator>
         </Providers>
         <FluidCursor />
       </body>
     </html>
   );
 }
-
